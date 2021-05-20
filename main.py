@@ -1,7 +1,10 @@
 import pandas as pd
-
+import prediction
+# import csv
 
 def main():
+    # data = list(csv.reader(open('ratings_Movies_and_TV.csv')))
+    # print(data)
     # data selection and processing
     # I chose Amazon Movies and TV shows for this HW2
     data_frame = pd.read_json('reviews_Movies_and_TV_5.json', lines=True)
@@ -15,6 +18,8 @@ def main():
     # drop the training set from the main set to get the 20% testing
     testing_data = data_frame.drop(training_data.index)
     # print(testing_data.groupby(testing_data.reviewerID).get_group("AQP1VPK16SVWM"))
+    # rating prediction class using user based collaborative filtering
+    prediction.user_based_CF(training_data.reviewerID, training_data.asin, training_data.overall)
 
 
 if __name__ == "__main__":
