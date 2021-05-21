@@ -2,6 +2,7 @@ import pandas as pd
 import prediction
 # import csv
 
+
 def main():
     # data = list(csv.reader(open('ratings_Movies_and_TV.csv')))
     # print(data)
@@ -19,7 +20,9 @@ def main():
     testing_data = data_frame.drop(training_data.index)
     # print(testing_data.groupby(testing_data.reviewerID).get_group("AQP1VPK16SVWM"))
     # rating prediction class using user based collaborative filtering
-    prediction.user_based_CF(training_data.reviewerID, training_data.asin, training_data.overall)
+    ubcf = prediction
+    user_id_list, item_id_list, rating_list, uir, user_set, item_set = ubcf.prep()
+    ubcf.nearest_neighbors(user_id_list, item_id_list, rating_list, uir, user_set, item_set)
 
 
 if __name__ == "__main__":
