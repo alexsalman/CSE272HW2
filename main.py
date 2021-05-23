@@ -1,6 +1,7 @@
 import pandas as pd
 import prediction
 # import csv
+from collections import OrderedDict
 
 
 def main():
@@ -22,7 +23,10 @@ def main():
     # rating prediction class using user based collaborative filtering
     ubcf = prediction.UserBasedCF(training_data.reviewerID, training_data.asin, training_data.overall)
     user_id_list, item_id_list, rating_list, uir, user_set, item_set = ubcf.prep()
-    nn = prediction.nearest_neighbors(user_id_list, item_id_list, rating_list, uir, user_set, item_set)
+    user_id_list = list(OrderedDict.fromkeys(user_id_list))
+    nn = ubcf.nearest_neighbors(user_id_list, item_id_list, rating_list, uir, user_set, item_set)
+    # prediction = ubcf.predict(user_id_list, nn)
+    print(nn)
 
 
 if __name__ == "__main__":
