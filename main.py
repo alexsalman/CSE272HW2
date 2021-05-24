@@ -51,7 +51,7 @@ def main():
     # print(rate)
     pivot_table = training_data.pivot_table(values='overall', index='reviewerID', columns='asin').fillna(0)
     pivot_table = pivot_table.apply(np.sign)
-    print(pivot_table.head())
+    # print(pivot_table.head())
 
     notrated = {}
     notrated_indexes = {}
@@ -63,7 +63,7 @@ def main():
         row_names = [i[0] for i in idx_row]
         notrated_indexes[i] = indices
         notrated[i] = row_names
-    print(notrated)
+    # print(notrated)
 
     # Nearest Neighbor Recommender
     n = 5
@@ -72,7 +72,47 @@ def main():
     item_distances, item_indices = item_cosine_nn_fit.kneighbors(pivot_table.T.values)
 
     # Item Based Recommender
+    items_dic = {}
+    for i in range(len(pivot_table.T.index)):
+        item_idx = item_indices[i]
+        col_names = pivot_table.T.index[item_idx].tolist()
+        items_dic[pivot_table.T.index[i]] = col_names
+    # print(items_dic)
 
+    topRecs = {}
+    for k,v in rows_indexes.items():
+        item_idx = [j for i in item_indices[v] for j in i]
+        item_dist = [j for i in item_distances[v] for j in i]
+        combine = list(zip(item_dist, item_idx))
+        diction = {i: d for d, i in combine if i not in v}
+        zipped = list(zip(diction.keys(), diction.values()))
+        sort = sorted(zipped, key=lambda x: x[1])
+        recommendations = [(pivot_table.columns[i], d) for i, d in sort]
+        topRecs[k] = recommendations
+
+    def get_recommendations(reviewerID, number_of_recommendation = 10):
+        print('\n', rate[reviewerID])
+        for k, v in topRecs.items():
+            if reviewerID == k:
+                for i in v[:number_of_recommendation]:
+                    print('{} with similarity: {:.4f}'.format(i[0], 1 - i[1]))
+
+    # get_recommendations('AQP1VPK16SVWM')
+
+    # predictions
+    item_distances = 1 - item_distances
+    predictions = item_distances.T.dot(pivot_table.T.values) / np.array([np.abs(item_distances.T).sum(axis=1)]).T
+    ground_truth = pivot_table.T.values[item_distances.argsort()[0]]
+
+    # Eval predictions
+    def rmse(prediction, ground_truth):
+        prediction = prediction[ground_truth.nonzero()].flatten()
+        ground_truth = ground_truth[ground_truth.nonzero()].flatten()
+        return sqrt(mean_squared_error(prediction, ground_truth))
+
+    error_rate = rmse(predictions, ground_truth)
+    print("Accuracy: {:.3f}".format(100 - error_rate))
+    print("RMSE: {:.5f}".format(error_rate))
 
 
 if __name__ == "__main__":
