@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import prediction
 from math import sqrt
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.metrics import pairwise_distances
 from sklearn.neighbors import NearestNeighbors
 # import csv
@@ -26,7 +26,9 @@ def main():
     # print(training_data.head())
     # print(training_data.groupby(training_data.reviewerID).get_group("AQP1VPK16SVWM"))
     # drop the training set from the main set to get the 20% testing
+    # preping testing data for evaluation
     testing_data = data_frame.drop(training_data.index)
+
 #################################################################################
     # print(testing_data.groupby(testing_data.reviewerID).get_group("AQP1VPK16SVWM"))
     # rating prediction class using user based collaborative filtering
@@ -48,7 +50,8 @@ def main():
         row_names = [i[0] for i in rated]
         rows_indexes[i] = index
         rate[i] = row_names
-    # print(rate)
+    print('rate')
+    print(rate)
     pivot_table = training_data.pivot_table(values='overall', index='reviewerID', columns='asin').fillna(0)
     pivot_table = pivot_table.apply(np.sign)
     # print(pivot_table.head())
@@ -66,7 +69,7 @@ def main():
     # print(notrated)
 
     # Nearest Neighbor Recommender
-    n = 5
+    n = 10
     cosine_nn = NearestNeighbors(n_neighbors=n, algorithm='brute', metric='cosine')
     item_cosine_nn_fit = cosine_nn.fit(pivot_table.T.values)
     item_distances, item_indices = item_cosine_nn_fit.kneighbors(pivot_table.T.values)
@@ -90,29 +93,46 @@ def main():
         recommendations = [(pivot_table.columns[i], d) for i, d in sort]
         topRecs[k] = recommendations
 
-    def get_recommendations(reviewerID, number_of_recommendation = 10):
-        print('\n', rate[reviewerID])
-        for k, v in topRecs.items():
-            if reviewerID == k:
-                for i in v[:number_of_recommendation]:
-                    print('{} with similarity: {:.4f}'.format(i[0], 1 - i[1]))
-
-    # get_recommendations('AQP1VPK16SVWM')
-
     # predictions
     item_distances = 1 - item_distances
     predictions = item_distances.T.dot(pivot_table.T.values) / np.array([np.abs(item_distances.T).sum(axis=1)]).T
     ground_truth = pivot_table.T.values[item_distances.argsort()[0]]
 
     # Eval predictions
+    def mae(prediction, ground_truth):
+        prediction = prediction[ground_truth.nonzero()].flatten()
+        ground_truth = ground_truth[ground_truth.nonzero()].flatten()
+        return mean_absolute_error(prediction, ground_truth)
+
     def rmse(prediction, ground_truth):
         prediction = prediction[ground_truth.nonzero()].flatten()
         ground_truth = ground_truth[ground_truth.nonzero()].flatten()
         return sqrt(mean_squared_error(prediction, ground_truth))
 
-    error_rate = rmse(predictions, ground_truth)
-    print("Accuracy: {:.3f}".format(100 - error_rate))
-    print("RMSE: {:.5f}".format(error_rate))
+    # error_rate = rmse(predictions, ground_truth)
+    # print("Accuracy: {:.3f}".format(100 - error_rate))
+    print("MAE: {:.5f}".format(mae(predictions, ground_truth)))
+    print("RMSE: {:.5f}".format(rmse(predictions, ground_truth)))
+
+    # making a 10-item list of recommendations to all users
+    def get_recommendations(user):
+        to_file = '\n\n'+user+' - '+str(rate[user])
+        users_recommendations.write(to_file)
+        for a, b in topRecs.items():
+            if user == a:
+                for j in b[:10]:
+                    to_file = '\n{} with similarity: {:.4f}'.format(j[0], 1 - j[1])
+                    users_recommendations.write(to_file)
+
+    users = np.unique(training_data.reviewerID.to_numpy())
+    users_recommendations = open('users_recommendations.txt', 'a')
+    for user in users:
+        get_recommendations(user)
+    users_recommendations.close()
+
+    # Eval recommendation
+    # Precision
+    # if recomm in test then add to a list then take the len of both and take the percentage
 
 
 if __name__ == "__main__":
