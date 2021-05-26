@@ -9,6 +9,7 @@ from sklearn.neighbors import NearestNeighbors
 
 
 def main():
+    print('Item Item Based Collaborative Filtering Recommender: \n')
     # Data selection and processing
     # Any http://jmcauley.ucsd.edu/data/amazon/ (5-core) works on this algorithm
     # Reading JSON file and convert it to a pandas dataframe
@@ -53,7 +54,7 @@ def main():
     # I used the metric (cosine) because it measures similarity between vectors. Cosine measures
     # the distance between two vectors. The closest the vectors are, the more correlated they are
     # the farther the are, the more un correlated they are
-    n = 10
+    n = 5
     cosine_nn = NearestNeighbors(n_neighbors=n, algorithm='brute', metric='cosine')
     item_cosine_nn_fit = cosine_nn.fit(pivot_table.T.values)
     # item indices give the index of the actual item
@@ -63,7 +64,7 @@ def main():
     predictions = item_distances.T.dot(pivot_table.T.values) / np.array([np.abs(item_distances.T).sum(axis=1)]).T
     ground_truth = pivot_table.T.values[item_distances.argsort()[0]]
 
-    # Eval predictions
+    # Eval for predictions
     # Mean Absolute Error (MAE)
     def mae(prediction, ground_truth):
         prediction = prediction[ground_truth.nonzero()].flatten()
@@ -114,7 +115,7 @@ def main():
                 for j in b[:10]:
                     to_file = '\n{} with similarity: {:.4f}'.format(j[0], 1 - j[1])
                     users_recommendations.write(to_file)
-                    # Check if i
+                    # Check if training data item in list of testing list items
                     if j[0] in testing_data_user_items.get(user):
                         count += 1
         items_count = len(testing_data_user_items.get(user))
@@ -134,12 +135,14 @@ def main():
             conversion_rate += 1
     users_recommendations.close()
 
-    # Eval recommendation
+    # Eval for recommendations
     # Precision
-    # if recomm in test then add to a list then take the len of both and take the percentage
     precision = (sum_precision / users_counter) * 100
+    # Recall
     recall = (sum_recall / users_counter) * 100
+    # F measure
     f_measure = 2 * precision * recall / (precision + recall)
+    # Conversion rate
     conversion_rate = (conversion_rate / users_counter) * 100
     print('Precision: {:.2f}%'.format(precision))
     print('Recall: {:.2f}%'.format(recall))
