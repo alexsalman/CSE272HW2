@@ -1,3 +1,4 @@
+import collections
 import pandas as pd
 import numpy as np
 import prediction
@@ -15,7 +16,7 @@ def main():
 #################################################################################
     # data selection and processing
     # I chose Amazon Movies and TV shows for this HW2
-    data_frame = pd.read_json('reviews_Movies_and_TV_5.json', lines=True)
+    data_frame = pd.read_json('reviews_Video_Games_5.json', lines=True)
     # grouping by reviewerID to split users' ratings 80 training / 20 testing
     data_frame_group_by_id = data_frame.groupby(data_frame.reviewerID)
     # print(data_frame_group_by_id.get_group("AQP1VPK16SVWM"))
@@ -26,9 +27,19 @@ def main():
     # print(training_data.head())
     # print(training_data.groupby(training_data.reviewerID).get_group("AQP1VPK16SVWM"))
     # drop the training set from the main set to get the 20% testing
+#################################################################################
     # preping testing data for evaluation
     testing_data = data_frame.drop(training_data.index)
-
+    testing_data = testing_data.drop(columns=['reviewerName', 'helpful', 'reviewText', 'summary', 'unixReviewTime', 'reviewTime'])
+    testing_data = testing_data.pivot_table(values='overall', index='reviewerID', columns='asin')
+    testing_data_user_items = {}
+    for i, row in testing_data.iterrows():
+        rows = [x for x in range(0, len(testing_data.columns))]
+        combine = list(zip(row.index, row.values, rows))
+        rated = [(x, z) for x, y, z in combine if str(y) != 'nan']
+        row_names = [i[0] for i in rated]
+        testing_data_user_items[i] = row_names
+    print(testing_data_user_items)
 #################################################################################
     # print(testing_data.groupby(testing_data.reviewerID).get_group("AQP1VPK16SVWM"))
     # rating prediction class using user based collaborative filtering
@@ -50,8 +61,6 @@ def main():
         row_names = [i[0] for i in rated]
         rows_indexes[i] = index
         rate[i] = row_names
-    print('rate')
-    print(rate)
     pivot_table = training_data.pivot_table(values='overall', index='reviewerID', columns='asin').fillna(0)
     pivot_table = pivot_table.apply(np.sign)
     # print(pivot_table.head())
@@ -118,21 +127,42 @@ def main():
     def get_recommendations(user):
         to_file = '\n\n'+user+' - '+str(rate[user])
         users_recommendations.write(to_file)
+        count = 0
         for a, b in topRecs.items():
             if user == a:
                 for j in b[:10]:
                     to_file = '\n{} with similarity: {:.4f}'.format(j[0], 1 - j[1])
                     users_recommendations.write(to_file)
-
+                    if j[0] in testing_data_user_items.get(user):
+                        count += 1
+        items_count = len(testing_data_user_items.get(user))
+        return count/10, count/items_count
     users = np.unique(training_data.reviewerID.to_numpy())
     users_recommendations = open('users_recommendations.txt', 'a')
+    users_counter = 0
+    sum_precision = 0
+    sum_recall = 0
+    conversion_rate = 0
     for user in users:
-        get_recommendations(user)
+        users_counter += 1
+        count_precision, count_recall = get_recommendations(user)
+        sum_precision += count_precision
+        sum_recall += count_recall
+        if count_precision > 0:
+            conversion_rate += 1
     users_recommendations.close()
 
     # Eval recommendation
     # Precision
     # if recomm in test then add to a list then take the len of both and take the percentage
+    precision = (sum_precision / users_counter) * 100
+    recall = (sum_recall / users_counter) * 100
+    f_measure = 2 * precision * recall / (precision + recall)
+    conversion_rate = (conversion_rate / users_counter) * 100
+    print('Precision {:.4f}'.format(precision))
+    print('Recall: {:.4f}'.format(recall))
+    print('F-measure: {:.4f}'.format(f_measure))
+    print('Conversion rate: {:.4f}'.format(conversion_rate))
 
 
 if __name__ == "__main__":
