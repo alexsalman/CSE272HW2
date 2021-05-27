@@ -19,7 +19,7 @@ This system works on [Amazon datasets](http://jmcauley.ucsd.edu/data/amazon/). I
       - Recall: 5.07%
       - F-measure: 1.30
       - Conversion rate: 7.27%
-  - n_neighbors = 2
+  - n_neighbors = 3
       - Precision: 1.00%
       - Recall: 6.53%
       - F-measure: 1.73
